@@ -1,30 +1,30 @@
 # Wikipedia Interest Skill
 
-## What it does
+## Що робить інструмент
 
-Analyzes public attention to a topic through Wikipedia article pageviews, as one input to B2C product research. It is not a measure of purchasing demand.
+Аналізує увагу до теми за кількістю переглядів статей Вікіпедії. Це одне з джерел даних для дослідження B2C-продуктів, але не показник купівельного попиту.
 
-## Features
+## Можливості
 
-- Compare up to five language editions; resolve matching articles through Wikipedia langlinks.
-- Aggregate Wikimedia daily pageviews into months and analyze growth and trend.
-- Show a transparent heuristic reliability score.
-- Write `analysis.json`, a monthly `chart.png`, and a one-page `report.pdf`.
-- Provide an Agent Skill in [`SKILL.md`](SKILL.md) for agent-driven use and follow-up questions.
+- Порівняння до п’яти мовних версій Вікіпедії та пошук відповідних статей через міжмовні посилання (`langlinks`).
+- Агрегація щоденних переглядів Wikimedia за місяцями й аналіз зміни інтересу.
+- Зрозумілий евристичний показник надійності даних.
+- Створення `analysis.json`, помісячного графіка `chart.png` та односторінкового звіту `report.pdf`.
+- Інструкція для AI-агента в [`SKILL.md`](SKILL.md): запуск інструмента й відповіді на уточнювальні запитання.
 
-## Requirements
+## Вимоги
 
-Java 21, Maven, and network access to Wikimedia APIs. Set `WIKIMEDIA_USER_AGENT` to an identifiable application name with contact details for deployed use.
+Java 21, Maven і доступ до API Wikimedia. Для використання в робочому середовищі задайте `WIKIMEDIA_USER_AGENT` із назвою застосунку та контактними даними.
 
-## Build
+## Збирання
 
 ```bash
 mvn clean package
 ```
 
-## Usage
+## Використання
 
-Run from the project directory:
+Запускайте команду з кореневої папки проєкту:
 
 ```bash
 java -jar target/wikipedia-interest-skill.jar analyze \
@@ -35,40 +35,46 @@ java -jar target/wikipedia-interest-skill.jar analyze \
   --output ./output
 ```
 
-`--article` is a title on the source Wikipedia (`en` by default). Use `--source-language uk`, for example, for a Ukrainian source title. Dates are inclusive and use `YYYYMMDD`; Wikimedia pageview data begins on 2015-07-01. For Windows PowerShell, put the command on one line or use PowerShell's backtick for line continuation.
+`--article` — назва статті у вихідній мовній версії Вікіпедії (за замовчуванням `en`). Якщо назва українська, додайте, наприклад, `--source-language uk`. Початкова й кінцева дати входять до періоду та мають формат `YYYYMMDD`; дані про перегляди доступні з 2015-07-01. У Windows PowerShell введіть команду одним рядком або використайте зворотний апостроф для перенесення рядків.
 
-## Output
+## Результати
 
-- `analysis.json`: exact metrics, resolved article titles, monthly observations, conclusions, and limitations.
-- `chart.png`: monthly pageviews for complete months only.
-- `report.pdf`: one-page summary with metrics, chart, brief data-driven conclusions, and limits. Its page is rasterized, so text is not selectable.
+- `analysis.json` — точні метрики, знайдені назви статей, помісячні дані, висновки й обмеження.
+- `chart.png` — графік переглядів лише за повні місяці.
+- `report.pdf` — односторінковий звіт із метриками, графіком, короткими висновками на основі даних та обмеженнями. Сторінка збережена як зображення, тому текст не можна виділити.
 
-## Analysis methodology
+## Методика аналізу
 
-Daily pageviews are summed into calendar months. `totalViews` includes all observed days in the selected period. A month is `complete` only when the selected period covers the entire calendar month and Wikimedia provided every day. Incomplete months are excluded from the monthly average, growth, trend, and chart; missing days are never filled with zero.
+Щоденні перегляди підсумовуються за календарними місяцями. `totalViews` охоплює всі дні, для яких є дані в обраному періоді. Місяць вважається `complete`, лише якщо період охоплює його повністю, а Wikimedia надала дані за кожен день. Неповні місяці не враховуються в середньому за місяць, показнику зростання, тренді та графіку; пропущені дні не замінюються нулями.
 
-Growth compares averages of complete months: with at least six, the first three versus the last three; with two to five, the first `floor(n/2)` versus the remaining months. `growthPercent = (recentAverage - baselineAverage) / baselineAverage × 100`, rounded to one decimal. Growth is unavailable with fewer than two complete months or a zero baseline. `growthMethod` in the JSON identifies the rule used. A result above +5% is `growing`, below −5% is `declining`, otherwise `stable`.
+Зростання обчислюється за середніми значеннями повних місяців: якщо їх щонайменше шість, порівнюються перші три й останні три; якщо від двох до п’яти — перші `floor(n/2)` і решта. Формула: `growthPercent = (recentAverage - baselineAverage) / baselineAverage × 100`, результат округлюється до одного знака після коми. Якщо повних місяців менше двох або початкове середнє дорівнює нулю, показник не обчислюється. Поле `growthMethod` у JSON вказує застосований спосіб. Значення понад +5% означає `growing`, нижче −5% — `declining`, інакше — `stable`.
 
-Strong outliers are complete months above 2.5 times or below 0.4 times the median, detected only with at least four complete months. `reliabilityScore` is a 0–100 **heuristic reliability score**, not a statistical confidence interval or probability. It is the rounded product of `100 × coverage × history × outlierFactor × stabilityFactor`, where `coverage = observedDays / expectedDays`, `history = min(completeMonths / 6, 1)`, `outlierFactor = 1 - 0.5 × outlierMonths / completeMonths` (or 1 when there are no complete months), and `stabilityFactor = 1 / (1 + CV)`. `CV` is the population standard deviation of complete monthly totals divided by their mean; an all-zero or empty series uses `CV = 0`. A high score means the series is sufficiently complete and relatively stable, not that the conclusion is statistically certain.
+Сильним викидом вважається повний місяць із переглядами понад 2,5 медіани або менш ніж 0,4 медіани; викиди визначаються лише за наявності щонайменше чотирьох повних місяців. `reliabilityScore` — **евристичний показник надійності** від 0 до 100, а не статистичний довірчий інтервал чи ймовірність. Це округлений добуток `100 × coverage × history × outlierFactor × stabilityFactor`, де `coverage = observedDays / expectedDays`, `history = min(completeMonths / 6, 1)`, `outlierFactor = 1 - 0.5 × outlierMonths / completeMonths` (або 1, якщо повних місяців немає), а `stabilityFactor = 1 / (1 + CV)`. `CV` — стандартне відхилення повних місячних значень для генеральної сукупності, поділене на їхнє середнє; для порожнього ряду або ряду лише з нулів `CV = 0`. Високий бал означає, що ряд достатньо повний і відносно стабільний, а не те, що висновок статистично достовірний.
 
-## Limitations
+## Обмеження
 
-- Wikipedia pageviews are an interest proxy, **not purchase intent**, market size, or a sales forecast.
-- Language editions differ in audience size; raw counts are not population-normalized.
-- External events can create spikes; even three-month averages can be affected by a very large event.
-- Article choice and interlanguage linking can affect which topic is actually measured.
-- Month lengths differ, and the growth calculation uses monthly totals rather than per-day rates.
-- `reliabilityScore` is heuristic, not a confidence interval. A strong genuine trend may also lower the stability component.
+- Перегляди Вікіпедії — непрямий показник інтересу, **не купівельного наміру**, розміру ринку чи прогнозу продажів.
+- Аудиторії мовних версій різняться за розміром; абсолютні числа не нормалізовані за чисельністю аудиторії.
+- Зовнішні події можуть спричиняти різкі сплески; навіть середнє за три місяці може залежати від дуже великого сплеску.
+- Вибір статті та її міжмовних відповідників може впливати на те, яку саме тему вимірюємо.
+- Місяці мають різну кількість днів, а показник зростання використовує місячні суми, а не середні перегляди за день.
+- `reliabilityScore` — евристика, не довірчий інтервал. Сильний реальний тренд теж може знизити складову стабільності.
 
-## AI-assisted development
+## Використання ШІ під час розробки
 
-The initial Wikimedia API client, JSON parsing, and basic analysis were implemented manually. An AI coding assistant (Codex) helped accelerate the CLI, extended analytics, chart and PDF generation, tests, and subsequent improvements. AI-generated changes were checked through code review, unit tests, Maven builds, and live Wikimedia API smoke tests. A cheap-model end-to-end agent test has **not** yet been performed.
+Початковий клієнт Wikimedia API, розбір JSON і базовий аналіз були реалізовані вручну. AI-асистент для програмування (Codex) допоміг швидше реалізувати CLI, розширену аналітику, генерацію графіка й PDF, тести та подальші покращення. Зміни, створені за допомогою ШІ, перевірялися переглядом коду, модульними тестами, збиранням Maven і пробними запусками з реальним API Wikimedia.
 
-## Future improvements
+## Перевірка агентом
 
-- Local caching and parallel or batched requests for larger research tasks.
-- Configurable decision criteria and seasonality detection.
-- Stronger statistical trend methods and investigation of events or anomalies.
-- Representing a topic with multiple related articles.
-- Normalization or context for different language-edition audience sizes.
-- Larger-scale comparisons.
+27.09.2026 агент виконав сценарій для статті `Astronomy` у мовних розділах `uk`, `pl`, `cs` за період 01.01.2024–01.09.2026 включно. Він використав наявний JAR і створив `analysis.json`, `chart.png` та `report.pdf`. Ми звірили наведені ним метрики з JSON і перевірили, що PDF має одну сторінку. Повних місяців було 32 (січень 2024 — серпень 2026); перегляди за 01.09.2026 увійшли до `totalViews`, але не до помісячного середнього, темпу зміни та графіка.
+
+У середовищі агента Maven не був доступний, тому цей прогін **не перевіряє збирання з чистого вихідного коду**. Надані результати також не містять незалежного запису про назву моделі чи її автоматичний вибір навички. Щоб повністю підтвердити вимогу тесту на недорогій моделі, потрібно зберегти журнал відповідного чату із назвою моделі та використанням навички, перевірити уточнювальний запит і окремо повторити збирання в середовищі з Java 21 та Maven.
+
+## Подальші покращення
+
+- Локальне кешування та паралельні або пакетні запити для масштабніших досліджень.
+- Налаштовувані критерії оцінювання та виявлення сезонності.
+- Сильніші статистичні методи аналізу тренду й дослідження подій або аномалій.
+- Представлення теми кількома пов’язаними статтями.
+- Нормалізація або додатковий контекст для аудиторій різних мовних версій.
+- Порівняння у більшому масштабі.
